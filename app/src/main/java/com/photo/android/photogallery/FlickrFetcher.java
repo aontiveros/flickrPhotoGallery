@@ -56,6 +56,10 @@ public class FlickrFetcher {
         return new String(getUrlBytes(urlSpec));
     }
 
+    /**
+     * Fetch items from the flickr api for the current page
+     * @return
+     */
     public List<GalleryItem> fetchItems(){
         List<GalleryItem> items = new ArrayList<>();
         try{
@@ -83,6 +87,10 @@ public class FlickrFetcher {
         return items;
     }
 
+    /**
+     * Confirms the page that is currently next to be queued
+     * @return
+     */
     private synchronized String confirmPageAmount(){
         //if(page > MAX_PAGE)
           //  page = 1;
@@ -91,6 +99,13 @@ public class FlickrFetcher {
         return value;
     }
 
+    /**
+     * Parse the items from the retrieved JSON and appends any elements to the list of gallery items
+     * @param galleryItemList
+     * @param jsonBody
+     * @throws IOException
+     * @throws JSONException
+     */
     private void parseItems(List<GalleryItem> galleryItemList, JSONObject jsonBody) throws IOException, JSONException{
         JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
         JSONArray photosJsonArray = photosJsonObject.getJSONArray("photo");
