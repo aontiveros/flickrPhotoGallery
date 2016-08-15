@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InterfaceAddress;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +25,23 @@ public class FlickrFetcher {
 
     private static final String TAG = "FlickrFetcher";
     private static final String API_KEY = "834a13bc34d941207068a5582d3e82b4";
+    private static final String FETCH_RECENTS_METHOD = "flickr.photos.getRecent";
+    private static final String SEARCH_METHOD = "flickr.photos.search";
     private static final int MAX_PAGE = 10;
-    private static int page = 1;
     private int DEFAULT_BUFFER_SIZE = 1024;
+
+    private int mPage = 1;
+    private String mLastQuery;
+
+    private static final Uri ENDPOINT = Uri.parse("https://api.flickr.com/services/rest")
+            .buildUpon()
+            .appendQueryParameter("method", "flickr.photos.getRecent")
+            .appendQueryParameter("api_key", API_KEY)
+            .appendQueryParameter("format", "json")
+            .appendQueryParameter("nojsoncallback", "1")
+            .appendQueryParameter("extras", "url_s")
+            .build();
+
 
     public byte[] getUrlBytes(String urlSpec) throws IOException{
         URL url = new URL(urlSpec);
@@ -60,18 +75,9 @@ public class FlickrFetcher {
      * Fetch items from the flickr api for the current page
      * @return
      */
-    public List<GalleryItem> fetchItems(){
+    public List<GalleryItem> downloadGalleryItems(String url){
         List<GalleryItem> items = new ArrayList<>();
         try{
-            String url = Uri.parse("https://api.flickr.com/services/rest")
-                    .buildUpon()
-                    .appendQueryParameter("method", "flickr.photos.getRecent")
-                    .appendQueryParameter("api_key", API_KEY)
-                    .appendQueryParameter("format", "json")
-                    .appendQueryParameter("nojsoncallback", "1")
-                    .appendQueryParameter("extras", "url_s")
-                    .appendQueryParameter("page", confirmPageAmount())
-                    .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Sent URL: " + url);
             Log.i(TAG, "Received JSON: " + jsonString);
@@ -88,18 +94,6 @@ public class FlickrFetcher {
     }
 
     /**
-     * Confirms the page that is currently next to be queued
-     * @return
-     */
-    private synchronized String confirmPageAmount(){
-        //if(page > MAX_PAGE)
-          //  page = 1;
-        String value = Integer.toString(page);
-        page++;
-        return value;
-    }
-
-    /**
      * Parse the items from the retrieved JSON and appends any elements to the list of gallery items
      * @param galleryItemList
      * @param jsonBody
@@ -112,18 +106,56 @@ public class FlickrFetcher {
 
         for(int i = 0 ; i < photosJsonArray.length(); i++){
             JSONObject photoJsonObject = (JSONObject) photosJsonArray.get(i);
-
-//            GalleryItem item = new GalleryItem();
-//            item.setId(photoJsonObject.getString("id"));
-//            item.setTitle(photoJsonObject.getString("title"));
-//
-//            if(photoJsonObject.has("url_s")){
-//                item.setUrl_s(photoJsonObject.getString("url_s"));
-//                galleryItemList.add(item);
-//            }
             GalleryItem item = new Gson().fromJson(photoJsonObject.toString(), GalleryItem.class);
             galleryItemList.add(item);
 
         }
+    }
+
+    /**
+     * Builds a url with the respective method and query if it is a search based method.
+     * @param method The method to append
+     * @param query The query to apply, if search based method is applied.
+     * @return The built url to query
+     */
+    private String buildUrl(String method, String query){
+        Uri.Builder uriBuilder = ENDPOINT.buildUpon();
+        uriBuilder.appendQueryParameter("method", method);
+        if(method.equals(SEARCH_METHOD)){
+            uriBuilder.appendQueryParameter("text", query);
+            Log.i(TAG, "Searching with query: " + query);
+        }
+        resolvePage(query);
+        uriBuilder.appendQueryParameter("page", Integer.toString(mPage));
+        return uriBuilder.build().toString();
+    }
+
+    private void resolvePage(String query){
+        if(query == null && mLastQuery == null){
+            mPage++;
+        }
+        else if(query != null && query.equals(query) && !query.equals("")){
+            mPage ++;
+        }
+        else {
+            mPage = 1;
+        }
+        mLastQuery = query;
+    }
+
+    public List<GalleryItem> fetchRecentPhotos(){
+        String url = buildUrl(FETCH_RECENTS_METHOD, null);
+        return downloadGalleryItems(url);
+    }
+
+    public List<GalleryItem> searchPhotos(String query){
+        if(query != null && !query.equals("")){
+            String url = buildUrl(SEARCH_METHOD, query);
+            return downloadGalleryItems(url);
+        }
+        else{
+            return fetchRecentPhotos();
+        }
+
     }
 }

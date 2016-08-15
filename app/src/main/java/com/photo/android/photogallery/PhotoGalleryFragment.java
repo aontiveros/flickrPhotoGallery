@@ -1,6 +1,5 @@
 package com.photo.android.photogallery;
 
-import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -10,17 +9,18 @@ import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import org.w3c.dom.Text;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,13 +38,16 @@ public class PhotoGalleryFragment  extends Fragment{
     private RecyclerView mRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
     private FlickrFetcher mFlickrFetcher;
+    private ProgressBar mProgressBar;
+    private SearchView mSearchView;
 
 
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
        // setRetainInstance(true);
-        new FetchItemsTask().execute();
+        setHasOptionsMenu(true);
+        updateItems();
 
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
@@ -76,13 +79,84 @@ public class PhotoGalleryFragment  extends Fragment{
         mRecyclerView = (RecyclerView) view.findViewById(R.id.fragment_photo_gallery_recycle_view);
         mRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
         mRecyclerView.setOnScrollListener(new PhotoScroller());
+
         return view;
+    }
+
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater){
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_photo_gallery, menu);
+
+        MenuItem item = menu.findItem(R.id.menu_item_search);
+        mSearchView = (SearchView) item.getActionView();
+
+        mSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Log.i(TAG, "Query submit: " + query);
+                QueryPreferences.setStoredQuery(getActivity(), query);
+                mSearchView.clearFocus();
+                mItems.clear();
+                updateItems();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                Log.i(TAG, "Query change: " + newText);
+                return false;
+            }
+        });
+
+        mSearchView.setOnCloseListener(new SearchView.OnCloseListener() {
+            @Override
+            public boolean onClose() {
+                QueryPreferences.setStoredQuery(getActivity(), "");
+                mItems.clear();
+                updateItems();
+                return false;
+            }
+        });
+
+        mSearchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String query = QueryPreferences.getStoredQuery(getActivity());
+                mSearchView.setQuery(query, false);
+            }
+        });
+    }
+
+    /**
+     * Clear out the user's preferences for the stored result if they had selected clear item
+     * otherwise return the default.
+     * @param menuItem The item selected
+     * @return true if the user slected to clear all items
+     */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem menuItem){
+        switch (menuItem.getItemId()) {
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updateItems();
+                return true;
+            default:
+                return super.onOptionsItemSelected(menuItem);
+        }
+
     }
 
     public static Fragment createFragment(){
         return new PhotoGalleryFragment();
     }
 
+    private void updateItems(){
+
+        String query = QueryPreferences.getStoredQuery(getActivity());
+        new FetchItemsTask(query).execute();
+    }
     /**
      * Set the adapter only if the fragment is in use. Otherwise notify the adapter if new items have been added
      * @param oldSize
@@ -145,7 +219,12 @@ public class PhotoGalleryFragment  extends Fragment{
             if(recyclerView.getAdapter().getItemCount() > 0){
                 int lastItem = ((GridLayoutManager)recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition();
                 if(lastItem != RecyclerView.NO_POSITION && lastItem == recyclerView.getAdapter().getItemCount() - 1){
-                    new FetchItemsTask().execute();
+                    if(mSearchView.getQuery() != null || !mSearchView.getQuery().equals("")){
+                        new FetchItemsTask(mSearchView.getQuery().toString()).execute();
+                    }
+                    else {
+                        new FetchItemsTask(null).execute();
+                    }
                 }
             }
         }
@@ -184,7 +263,7 @@ public class PhotoGalleryFragment  extends Fragment{
             GalleryItem item = mItems.get(position);
             Drawable placeHolder = getResources().getDrawable(R.drawable.no_image_box);
             holder.bindGalleryItem(placeHolder);
-            mThumbnailDownloader.queueThumbnail(holder, item.getUrl_s()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               );
+            mThumbnailDownloader.queueThumbnail(holder, item.getUrl_s());
         }
 
         @Override
@@ -198,29 +277,26 @@ public class PhotoGalleryFragment  extends Fragment{
      */
     public class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>>{
 
+        private String mQuery;
+        public FetchItemsTask(String query){
+            mQuery = query;
+        }
         @Override
         protected List<GalleryItem> doInBackground(Void... voids) {
-//            try{
-//                String result = new FlickrFetcher()
-//                        .getUrlString("https://www.bignerdranch.com");
-//                Log.i(TAG, "Fetched contents of URL: " + result);
-//            }
-//            catch (IOException ioe){
-//                Log.e(TAG, "Failed to fetch URL: ", ioe);
-//            }
             if(mFlickrFetcher == null)
                 mFlickrFetcher = new FlickrFetcher();
-           return mFlickrFetcher.fetchItems();
+            if(mQuery == null) {
+                return mFlickrFetcher.fetchRecentPhotos();
+            }
+            else {
+                return mFlickrFetcher.searchPhotos(mQuery);
+            }
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
-            List<GalleryItem> newItems = items;
-            int oldSize = mItems.size();
-            if(newItems.size() > 0) {
-                mItems.addAll(newItems);
-            }
-            setupAdapter(oldSize, mItems.size());
+            mItems.addAll(items);
+            setupAdapter(0, mItems.size());
         }
     }
 }
