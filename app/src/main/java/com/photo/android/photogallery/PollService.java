@@ -1,5 +1,6 @@
 package com.photo.android.photogallery;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.DownloadManager;
 import android.app.IntentService;
@@ -22,9 +23,13 @@ import java.util.List;
  */
 public class PollService extends IntentService {
 
-    private static final String TAG = "PollService";
     private static final long POLL_INTERVAL = AlarmManager.INTERVAL_FIFTEEN_MINUTES;
+    private static final String TAG = "PollService";
+
     public static final String ACTION_SHOW_NOTIFICATION = "com.photo.android.photogallery.SHOW_NOTIFICATION";
+    public static final String PERM_PRIVATE = "com.photo.android.photogallery.PRIVATE";
+    public static final String REQUEST_CODE = "REQUEST_CODE";
+    public static final String NOTIFICATION = "NOTIFICATION";
 
     public static Intent newIntent(Context context){
         return new Intent(context, PollService.class);
@@ -72,11 +77,7 @@ public class PollService extends IntentService {
                     .setContentIntent(pi)
                     .setAutoCancel(true)
                     .build();
-
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-            notificationManager.notify(0, notification);
-
-            sendBroadcast(new Intent(ACTION_SHOW_NOTIFICATION));
+            showBackground(0, notification);
         }
 
         QueryPreferences.setLastResultId(this, resultId);
@@ -109,5 +110,13 @@ public class PollService extends IntentService {
     private boolean isNetworkAvailableAndConnected(){
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         return cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isConnected();
+    }
+
+    private void showBackground(int requestCode, Notification notification){
+        Intent i = new Intent(ACTION_SHOW_NOTIFICATION);
+        i.putExtra(REQUEST_CODE, requestCode);
+        i.putExtra(NOTIFICATION, notification);
+        sendOrderedBroadcast(i, PERM_PRIVATE, null, null,
+                Activity.RESULT_OK, null, null);
     }
 }
